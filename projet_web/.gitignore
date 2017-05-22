@@ -1,1 +1,13 @@
-/bin/
+/bin
+
+#Eclipse
+.classpath
+.project
+/.settings
+
+#Intellij
+/.idea
+projet_web.iml
+
+
+.idea/
