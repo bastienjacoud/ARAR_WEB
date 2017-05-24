@@ -8,6 +8,4 @@
 #Intellij
 /.idea
 projet_web.iml
-
-
-.idea/
+/out

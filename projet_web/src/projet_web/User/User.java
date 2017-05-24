@@ -29,24 +29,32 @@ public class User {
             // Attente réponse
             String header = clientDIS.readUTF();
             nb += header.length();
-            boolean data = false;
 
             if (header.equals("HTTP/1.1 200 OK")) {
-                byte[] buf = new byte[2056];
-                while (clientDIS.read(buf) > 0) {
-                    nb++;
-                    if (new String(buf).trim().equals("Message_body:") && !data) {
-                        buf = new byte[2056];
-                        data = true;
+                // On récupère la taille du fichier
+                String contentLength = clientDIS.readUTF();
+                nb += contentLength.length();
+
+                // On récupère le type du fichier
+                String contentType = clientDIS.readUTF();
+                nb += contentType.length();
+
+                // On récupère le contenu du fichier
+                if (clientDIS.readUTF().equals("Message_body:")) {
+                    nb += "Message_body:".length();
+                    byte[] buf = new byte[2056];
+                    while (clientDIS.read(buf) > 0) {
+                        nb++;
                     }
+                    System.out.println(buf);
+                    file.write(buf);
                 }
-                file.write(buf);
             }
 
         } while (nb == 2056);
     }
 
     public static void main(String[] args) throws IOException {
-        new User().receiveFile(InetAddress.getByName("192.168.43.144"),80,"");
+        new User().receiveFile(InetAddress.getByName("192.168.43.144"), 1234, "fichier.txt");
     }
 }
