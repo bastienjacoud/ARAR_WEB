@@ -91,7 +91,7 @@ public class ServeurWeb {
 		catch (IOException e1)
 		{
 			// TODO Auto-generated catch block
-			System.out.println("Erreur lors de l'écriture de l'en tete !");
+			System.out.println("Erreur lors de l'ï¿½criture de l'en tete !");
 		}
 		try
 		{
@@ -120,7 +120,7 @@ public class ServeurWeb {
 		catch (IOException e)
 		{
 			// TODO Auto-generated catch block
-			System.out.println("Erreur lors de l'envoi des données du fichier !");
+			System.out.println("Erreur lors de l'envoi des donnï¿½es du fichier !");
 		}
 	}
 
