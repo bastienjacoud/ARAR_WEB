@@ -29,15 +29,18 @@ public class User {
             // Attente réponse
             String header = clientDIS.readUTF();
             nb += header.length();
+            System.out.println(header);
 
             if (header.equals("HTTP/1.1 200 OK")) {
                 // On récupère la taille du fichier
                 String contentLength = clientDIS.readUTF();
                 nb += contentLength.length();
+                System.out.println(contentLength);
 
                 // On récupère le type du fichier
                 String contentType = clientDIS.readUTF();
                 nb += contentType.length();
+                System.out.println(contentType);
 
                 // On récupère le contenu du fichier
                 if (clientDIS.readUTF().equals("Message_body:")) {
