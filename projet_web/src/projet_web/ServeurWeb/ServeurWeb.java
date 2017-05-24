@@ -1,4 +1,4 @@
-package projet_web;
+package projet_web.ServeurWeb;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
