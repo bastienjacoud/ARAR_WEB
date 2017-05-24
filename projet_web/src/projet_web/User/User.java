@@ -14,7 +14,7 @@ public class User {
         Socket soc = new Socket(serveurIP, serveurPort);
 
         // Ouverture du fichier
-        FileOutputStream file = new FileOutputStream("data/" + nomFichier);
+        FileOutputStream file = new FileOutputStream("src/projet_web/User/data/" + nomFichier);
 
         // Chargement des flux
         DataOutputStream clientDOS = new DataOutputStream(soc.getOutputStream());
@@ -29,15 +29,18 @@ public class User {
             // Attente réponse
             String header = clientDIS.readUTF();
             nb += header.length();
+            System.out.println(header);
 
             if (header.equals("HTTP/1.1 200 OK")) {
                 // On récupère la taille du fichier
                 String contentLength = clientDIS.readUTF();
                 nb += contentLength.length();
+                System.out.println(contentLength);
 
                 // On récupère le type du fichier
                 String contentType = clientDIS.readUTF();
                 nb += contentType.length();
+                System.out.println(contentType);
 
                 // On récupère le contenu du fichier
                 if (clientDIS.readUTF().equals("Message_body:")) {
@@ -55,6 +58,6 @@ public class User {
     }
 
     public static void main(String[] args) throws IOException {
-        new User().receiveFile(InetAddress.getByName("192.168.43.144"), 1234, "fichier.txt");
+        new User().receiveFile(InetAddress.getByName("134.214.119.240"), 80, "fichier.txt");
     }
 }
