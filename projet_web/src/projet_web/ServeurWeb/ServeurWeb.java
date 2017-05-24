@@ -115,7 +115,7 @@ public class ServeurWeb {
 		catch (IOException e)
 		{
 			// TODO Auto-generated catch block
-			System.out.println("Erreur lors de l'envoi des donn�es du fichier !");
+			System.out.println("Erreur lors de l'envoi des données du fichier !");
 		}
 	}
 

@@ -1,1 +1,15 @@
+<<<<<<< HEAD
 /bin/
+=======
+/bin
+
+#Eclipse
+.classpath
+.project
+/.settings
+
+#Intellij
+/.idea
+projet_web.iml
+/out
+>>>>>>> 26096ae1a8553b04d5df1bb918c0adb48bb05cf1
