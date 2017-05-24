@@ -39,7 +39,9 @@ public class ServeurWeb {
 	{
 		try
 		{
+			System.out.println("test1");
 			con_cli = ss.accept();
+			System.out.println("test2");
 		}
 		catch (IOException e)
 		{
@@ -71,7 +73,7 @@ public class ServeurWeb {
 		catch (IOException e)
 		{
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return "";
 		}
 		return req.split(" ")[1];
 	}
@@ -82,25 +84,18 @@ public class ServeurWeb {
 		FileInputStream fis;
 		//FileOutputStream fos;
 		byte[] buf = new byte[2056];
-
-		String msgEnTete = new String("HTTP/1.1 200 OK\nMessage_body:");
-		try
-		{
-			serveurDOS.write(msgEnTete.getBytes());
-		}
-		catch (IOException e1)
-		{
-			// TODO Auto-generated catch block
-			System.out.println("Erreur lors de l'ï¿½criture de l'en tete !");
-		}
 		try
 		{
 			fis = new FileInputStream(f);
+			int i=0;
 			while(fis.read(buf) >= 0)
 			{
-
+				i++;
 			}
+			String msgEnTete = new String("HTTP/1.1 200 OK\nContent-Length: " + i + "\nContent-Type: " + nomFichier.split(".")[1] + "\nMessage_body:");
+			serveurDOS.write(msgEnTete.getBytes());
 			serveurDOS.write(buf);
+			serveurDOS.write("\n".getBytes());
 			fis.close();
 		}
 		catch (FileNotFoundException e)
@@ -139,6 +134,20 @@ public class ServeurWeb {
 			// TODO Auto-generated catch block
 			System.out.println("Erreur lors de la fermeture des sockets !");
 		}
+	}
+
+	public void action()
+	{
+		this.connexion();
+		System.out.println("Connexion établie.");
+		this.sendFile(this.receiveRequest());
+		this.fermeConnexion();
+	}
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+		new ServeurWeb().action();
 	}
 
 }
