@@ -23,7 +23,7 @@ public class ServeurWeb {
 	{
 		try
 		{
-			ss = new ServerSocket(1234);
+			ss = new ServerSocket(80);
 			con_cli = null;
 			serveurDOS = null;
 			serveurDIS = null;
@@ -39,9 +39,10 @@ public class ServeurWeb {
 	{
 		try
 		{
-			System.out.println("test1");
+			con_cli = new Socket();
+			System.out.println("accept() OK Bis");
 			con_cli = ss.accept();
-			System.out.println("test2");
+			System.out.println("accept() OK");
 		}
 		catch (IOException e)
 		{
@@ -121,7 +122,6 @@ public class ServeurWeb {
 
 	public void fermeConnexion()
 	{
-
 		try
 		{
 			ss.close();
@@ -139,7 +139,7 @@ public class ServeurWeb {
 	public void action()
 	{
 		this.connexion();
-		System.out.println("Connexion établie.");
+		System.out.println("Connexion ï¿½tablie.");
 		this.sendFile(this.receiveRequest());
 		this.fermeConnexion();
 	}

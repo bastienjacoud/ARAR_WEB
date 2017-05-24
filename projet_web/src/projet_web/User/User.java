@@ -14,7 +14,7 @@ public class User {
         Socket soc = new Socket(serveurIP, serveurPort);
 
         // Ouverture du fichier
-        FileOutputStream file = new FileOutputStream("data/" + nomFichier);
+        FileOutputStream file = new FileOutputStream("src/projet_web/User/data/" + nomFichier);
 
         // Chargement des flux
         DataOutputStream clientDOS = new DataOutputStream(soc.getOutputStream());
@@ -55,6 +55,6 @@ public class User {
     }
 
     public static void main(String[] args) throws IOException {
-        new User().receiveFile(InetAddress.getByName("192.168.43.144"), 1234, "fichier.txt");
+        new User().receiveFile(InetAddress.getByName("127.0.0.1"), 1234, "fichier.txt");
     }
 }
