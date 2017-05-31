@@ -21,43 +21,46 @@ public class User {
         DataInputStream clientDIS = new DataInputStream(soc.getInputStream());
 
         // Ecriture de la requête GET
-        clientDOS.write(("GET " + nomFichier + " HTTP/1.1\n\r").getBytes());
+        clientDOS.writeUTF("GET " + nomFichier + " HTTP/1.1");
         clientDOS.flush();
 
-        int nb = 0;
-        do {
-            // Attente réponse
-            String header = clientDIS.readUTF();
-            nb += header.length();
-            System.out.println(header);
+        // Attente réponse, on récupère le header
+        String header = clientDIS.readUTF();
+        System.out.print(header);
 
-            if (header.equals("HTTP/1.1 200 OK")) {
-                // On récupère la taille du fichier
-                String contentLength = clientDIS.readUTF();
-                nb += contentLength.length();
-                System.out.println(contentLength);
+        // On récupère la taille du fichier
+        String contentLength = clientDIS.readUTF();
+        System.out.print(contentLength);
 
-                // On récupère le type du fichier
-                String contentType = clientDIS.readUTF();
-                nb += contentType.length();
-                System.out.println(contentType);
+        // On récupère le type du fichier
+        String contentType = clientDIS.readUTF();
+        System.out.print(contentType);
 
-                // On récupère le contenu du fichier
-                if (clientDIS.readUTF().equals("Message_body:")) {
-                    nb += "Message_body:".length();
-                    byte[] buf = new byte[2056];
-                    while (clientDIS.read(buf) > 0) {
-                        nb++;
-                    }
-                    System.out.println(buf);
-                    file.write(buf);
-                }
-            }
+        // On récupère le header des données
+        String messageBody = clientDIS.readUTF();
+        System.out.print(messageBody);
 
-        } while (nb == 2056);
+        // Ligne vide
+        String emptyLine = clientDIS.readUTF();
+        System.out.print(emptyLine);
+
+        // Lecture des données
+        int b = clientDIS.read();
+        while (b != -1) {
+            // Ecriture dans le fichier
+            System.out.print(b);
+            file.write(b);
+            b = clientDIS.read();
+        }
+
+        // Fermeture du fichier et des flux
+        file.close();
+        clientDIS.close();
+        clientDOS.close();
     }
 
     public static void main(String[] args) throws IOException {
-        new User().receiveFile(InetAddress.getByName("127.0.0.1"), 1234, "fichier.txt");
+        //new User().receiveFile(InetAddress.getByName("127.0.0.1"), 80, "fichier.txt");
+        new User().receiveFile(InetAddress.getByName("192.168.43.144"), 80, "moche.jpg");
     }
 }
