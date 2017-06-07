@@ -1,63 +1,170 @@
 package projet_web.User;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.concurrent.Service;
+import javafx.concurrent.Task;
+import javafx.event.EventHandler;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.AnchorPane;
+import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
+
+import java.awt.*;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 
-public class User {
+public class User extends Application {
+
+    private Stage primaryStage;
+    private AnchorPane gui;
+
+    @FXML
+    TextField serveurIP;
+    @FXML
+    TextField nomFichier;
 
     public void receiveFile(InetAddress serveurIP, int serveurPort, String nomFichier) throws IOException {
         // Ouverture du port
-        Socket soc = new Socket(serveurIP, serveurPort);
+        Socket soc = null;
+        try{
+            soc = new Socket(serveurIP, serveurPort);
+        } catch (Exception e) {
+            showAlert("Erreur serveur", "Impossible de se connecter au serveur");
+        }
 
         // Ouverture du fichier
-        FileOutputStream file = new FileOutputStream("src/projet_web/User/data/" + nomFichier);
+        FileOutputStream file = null;
+        try{
+            file = new FileOutputStream("src/projet_web/User/data/" + nomFichier);
+        } catch (IOException e) {
+            showAlert("Erreur locale", "Le répertoire 'src/projet_web/User/data' est introuvable");
+        }
 
         // Chargement des flux
         DataOutputStream clientDOS = new DataOutputStream(soc.getOutputStream());
         DataInputStream clientDIS = new DataInputStream(soc.getInputStream());
 
         // Ecriture de la requête GET
-        clientDOS.write(("GET " + nomFichier + " HTTP/1.1\n\r").getBytes());
+        clientDOS.writeUTF("GET " + nomFichier + " HTTP/1.1");
         clientDOS.flush();
 
-        int nb = 0;
-        do {
-            // Attente réponse
-            String header = clientDIS.readUTF();
-            nb += header.length();
-            System.out.println(header);
+        // Attente réponse, on récupère le header
+        String header = clientDIS.readUTF();
+        System.out.print(header);
 
-            if (header.equals("HTTP/1.1 200 OK")) {
-                // On récupère la taille du fichier
-                String contentLength = clientDIS.readUTF();
-                nb += contentLength.length();
-                System.out.println(contentLength);
+        if (header.equals("HTTP/1.1 200 OK\n")) {
 
-                // On récupère le type du fichier
-                String contentType = clientDIS.readUTF();
-                nb += contentType.length();
-                System.out.println(contentType);
+            // On récupère la taille du fichier
+            String contentLength = clientDIS.readUTF();
+            System.out.print(contentLength);
 
-                // On récupère le contenu du fichier
-                if (clientDIS.readUTF().equals("Message_body:")) {
-                    nb += "Message_body:".length();
-                    byte[] buf = new byte[2056];
-                    while (clientDIS.read(buf) > 0) {
-                        nb++;
-                    }
-                    System.out.println(buf);
-                    file.write(buf);
-                }
+            // On récupère le type du fichier
+            String contentType = clientDIS.readUTF();
+            System.out.print(contentType);
+
+            // On récupère le header des données
+            String messageBody = clientDIS.readUTF();
+            System.out.print(messageBody);
+
+            // Ligne vide
+            String emptyLine = clientDIS.readUTF();
+            System.out.print(emptyLine);
+
+            // Lecture des données
+            int b = clientDIS.read();
+            while (b != -1) {
+                // Ecriture dans le fichier
+                //System.out.print(b);
+                file.write(b);
+                b = clientDIS.read();
             }
+            System.out.println("Le fichier a bien été reçu");
+            //showAlert("Succès","Le fichier a bien été reçu");
+        }else if(header.equals("404\n")){
+            //showAlert("Erreur","");
+        }else{
+            //showAlert("Erreur","");
+        }
 
-        } while (nb == 2056);
+        // Fermeture du fichier et des flux
+        file.close();
+        clientDIS.close();
+        clientDOS.close();
     }
 
-    public static void main(String[] args) throws IOException {
-        new User().receiveFile(InetAddress.getByName("127.0.0.1"), 1234, "fichier.txt");
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        this.primaryStage = primaryStage;
+        this.primaryStage.setTitle("Client HTTP");
+        this.primaryStage.setResizable(false);
+
+        // Permet l'arrêt du programme lorsque la fenêtre est quitée
+        this.primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+            @Override
+            public void handle(WindowEvent t) {
+                Platform.exit();
+                System.exit(0);
+            }
+        });
+
+        // Chargement du rootLayout
+        FXMLLoader loader = new FXMLLoader();
+        loader.setLocation(User.class.getResource("User.fxml"));
+        gui = (AnchorPane) loader.load();
+
+        // Affichage du rootLayout
+        Scene scene = new Scene(gui);
+        primaryStage.setScene(scene);
+        primaryStage.show();
+    }
+
+    @FXML
+    public void handleReceive() {
+        final Service<Void> lancerUser = new Service<Void>() {
+            @Override
+            protected Task<Void> createTask() {
+                return new Task<Void>() {
+                    @Override
+                    protected Void call() throws Exception {
+                        try {
+                            new User().receiveFile(InetAddress.getByName(serveurIP.getText()), 80, nomFichier.getText());
+                        } catch (IOException e) {
+                            showAlert("Erreur locale", "L'adresse IP entrée pour le serveur est incorrecte");
+                        }
+                        return null;
+                    }
+                };
+            }
+        };
+        lancerUser.start();
+    }
+
+    @FXML
+    public void handleOpen() {
+        try {
+            Desktop.getDesktop().open(new File("src/projet_web/User/data"));
+        } catch (IOException e) {
+            showAlert("Erreur locale", "Le répertoire 'src/projet_web/User/data' est introuvable");
+        }
+        serveurIP.setText("192.168.43.144");
+        nomFichier.setText("fichier.txt");
+    }
+
+    private void showAlert(String titre, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(titre);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    public static void main(String[] args) {
+        launch(args);
     }
 }
