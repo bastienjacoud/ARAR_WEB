@@ -18,6 +18,9 @@ import java.awt.*;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
+
+import static java.lang.System.exit;
 
 public class User extends Application {
 
@@ -29,10 +32,12 @@ public class User extends Application {
     @FXML
     TextField nomFichier;
 
-    public void receiveFile(InetAddress serveurIP, int serveurPort, String nomFichier) throws IOException {
+    private Socket soc = null;
+    private DataOutputStream clientDOS;
+
+    public void receiveFile(InetAddress serveurIP, int serveurPort, String nomFichier) {
         // Ouverture du port
-        Socket soc = null;
-        try{
+        try {
             soc = new Socket(serveurIP, serveurPort);
         } catch (Exception e) {
             showAlert("Erreur serveur", "Impossible de se connecter au serveur");
@@ -40,62 +45,67 @@ public class User extends Application {
 
         // Ouverture du fichier
         FileOutputStream file = null;
-        try{
+        try {
             file = new FileOutputStream("src/projet_web/User/data/" + nomFichier);
         } catch (IOException e) {
             showAlert("Erreur locale", "Le répertoire 'src/projet_web/User/data' est introuvable");
         }
 
-        // Chargement des flux
-        DataOutputStream clientDOS = new DataOutputStream(soc.getOutputStream());
-        DataInputStream clientDIS = new DataInputStream(soc.getInputStream());
+        try {
+            // Chargement des flux
+            clientDOS = new DataOutputStream(soc.getOutputStream());
+            DataInputStream clientDIS = new DataInputStream(soc.getInputStream());
 
-        // Ecriture de la requête GET
-        clientDOS.writeUTF("GET " + nomFichier + " HTTP/1.1");
-        clientDOS.flush();
+            // Ecriture de la requête GET
+            clientDOS.writeUTF("GET " + nomFichier + " HTTP/1.1");
+            clientDOS.flush();
 
-        // Attente réponse, on récupère le header
-        String header = clientDIS.readUTF();
-        System.out.print(header);
+            // Attente réponse, on récupère le header
+            String header = clientDIS.readUTF();
+            System.out.print(header);
 
-        if (header.equals("HTTP/1.1 200 OK\n")) {
+            if (header.equals("HTTP/1.1 200 OK\n")) {
 
-            // On récupère la taille du fichier
-            String contentLength = clientDIS.readUTF();
-            System.out.print(contentLength);
+                // On récupère la taille du fichier
+                String contentLength = clientDIS.readUTF();
+                System.out.print(contentLength);
 
-            // On récupère le type du fichier
-            String contentType = clientDIS.readUTF();
-            System.out.print(contentType);
+                // On récupère le type du fichier
+                String contentType = clientDIS.readUTF();
+                System.out.print(contentType);
 
-            // On récupère le header des données
-            String messageBody = clientDIS.readUTF();
-            System.out.print(messageBody);
+                // On récupère le header des données
+                String messageBody = clientDIS.readUTF();
+                System.out.print(messageBody);
 
-            // Ligne vide
-            String emptyLine = clientDIS.readUTF();
-            System.out.print(emptyLine);
+                // Ligne vide
+                String emptyLine = clientDIS.readUTF();
+                System.out.print(emptyLine);
 
-            // Lecture des données
-            int b = clientDIS.read();
-            while (b != -1) {
-                // Ecriture dans le fichier
-                //System.out.print(b);
-                file.write(b);
-                b = clientDIS.read();
+                // Lecture des données
+                int b = clientDIS.read();
+                while (b != -1) {
+                    // Ecriture dans le fichier
+                    //System.out.print(b);
+                    file.write(b);
+                    b = clientDIS.read();
+                }
+                System.out.println("Le fichier a bien été reçu");
+                showAlert("Succès", "Le fichier a bien été transféré");
+            } else if (header.equals("HTTP/1.1 404 NOT FOUND\n")) {
+                showAlert("Erreur serveur", "Le fichier est introuvable");
+            } else if (header.equals("HTTP/1.1 502 BAD GATEWAY\n")) {
+                showAlert("Erreur serveur", "La requête envoyée est incorrecte");
+            } else {
+                showAlert("Erreur serveur", "La réponse du serveur est incorrecte");
             }
-            System.out.println("Le fichier a bien été reçu");
-            //showAlert("Succès","Le fichier a bien été reçu");
-        }else if(header.equals("404\n")){
-            //showAlert("Erreur","");
-        }else{
-            //showAlert("Erreur","");
-        }
 
-        // Fermeture du fichier et des flux
-        file.close();
-        clientDIS.close();
-        clientDOS.close();
+            // Fermeture du fichier et des flux
+            file.close();
+            clientDIS.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -108,8 +118,18 @@ public class User extends Application {
         this.primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             @Override
             public void handle(WindowEvent t) {
+                if (soc != null) {
+                    try {
+                        clientDOS.writeUTF("Connection = close\n");
+                        clientDOS.flush();
+                        clientDOS.close();
+                        soc.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
                 Platform.exit();
-                System.exit(0);
+                exit(0);
             }
         });
 
@@ -126,23 +146,35 @@ public class User extends Application {
 
     @FXML
     public void handleReceive() {
-        final Service<Void> lancerUser = new Service<Void>() {
-            @Override
-            protected Task<Void> createTask() {
-                return new Task<Void>() {
-                    @Override
-                    protected Void call() throws Exception {
+        Platform.runLater(
+                () -> {
+                    new Thread(() -> {
                         try {
                             new User().receiveFile(InetAddress.getByName(serveurIP.getText()), 80, nomFichier.getText());
-                        } catch (IOException e) {
+                        } catch (UnknownHostException e) {
                             showAlert("Erreur locale", "L'adresse IP entrée pour le serveur est incorrecte");
                         }
-                        return null;
-                    }
-                };
-            }
-        };
-        lancerUser.start();
+                    }).start();
+                    /*final Service<Void> lancerUser = new Service<Void>() {
+                        @Override
+                        protected Task<Void> createTask() {
+                            return new Task<Void>() {
+                                @Override
+                                protected Void call() throws Exception {
+                                    try {
+                                        new User().receiveFile(InetAddress.getByName(serveurIP.getText()), 80, nomFichier.getText());
+                                    } catch (IOException e) {
+                                        showAlert("Erreur locale", "L'adresse IP entrée pour le serveur est incorrecte");
+                                    }
+                                    return null;
+                                }
+                            };
+                        }
+                    };
+                    lancerUser.start();
+                    */
+                }
+        );
     }
 
     @FXML
@@ -157,11 +189,15 @@ public class User extends Application {
     }
 
     private void showAlert(String titre, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(titre);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        Platform.runLater(
+                () -> {
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle(titre);
+                    alert.setHeaderText(null);
+                    alert.setContentText(message);
+                    alert.showAndWait();
+                }
+        );
     }
 
     public static void main(String[] args) {
