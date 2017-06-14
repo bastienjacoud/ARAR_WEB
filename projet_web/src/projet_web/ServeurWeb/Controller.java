@@ -28,6 +28,7 @@ public class Controller {
     }
 
     private void LancerServ() {
+        btLancement.setDisable(true);
         Platform.runLater(() -> {
             final Service<Void> LancerServ = new Service<Void>() {
 

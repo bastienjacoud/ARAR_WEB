@@ -6,7 +6,7 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="265.0" prefWidth="508.0" xmlns="http://javafx.com/javafx/8.0.102" xmlns:fx="http://javafx.com/fxml/1" fx:controller="projet_web.User.User">
+<AnchorPane prefHeight="306.0" prefWidth="508.0" xmlns="http://javafx.com/javafx/8.0.112" xmlns:fx="http://javafx.com/fxml/1" fx:controller="projet_web.User.User">
    <children>
       <Label layoutX="55.0" layoutY="49.0" text="IP Serveur">
          <font>
@@ -28,15 +28,20 @@
             <Font size="20.0" />
          </font>
       </TextField>
-      <Button layoutX="137.0" layoutY="192.0" mnemonicParsing="false" onAction="#handleReceive" text="Recevoir">
+      <Button layoutX="136.0" layoutY="235.0" mnemonicParsing="false" onAction="#handleReceive" text="Recevoir">
          <font>
             <Font size="20.0" />
          </font>
       </Button>
-      <Button layoutX="291.0" layoutY="192.0" mnemonicParsing="false" onAction="#handleOpen" text="Ouvrir">
+      <Button layoutX="290.0" layoutY="235.0" mnemonicParsing="false" onAction="#handleOpen" text="Ouvrir">
          <font>
             <Font size="20.0" />
          </font>
       </Button>
+      <Label fx:id="cookieLabel" layoutX="48.0" layoutY="178.0" prefHeight="30.0" prefWidth="413.0" text=" " textAlignment="CENTER">
+         <font>
+            <Font size="20.0" />
+         </font>
+      </Label>
    </children>
 </AnchorPane>

@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
@@ -14,12 +15,7 @@ import javafx.stage.WindowEvent;
 
 import java.awt.*;
 import java.io.*;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.TreeSet;
-
-import static java.lang.System.exit;
+import java.net.*;
 
 public class User extends Application {
 
@@ -31,10 +27,14 @@ public class User extends Application {
     @FXML
     TextField nomFichier;
 
+    @FXML
+    Label cookieLabel;
+
     private Socket soc = null;
     private DataOutputStream clientDOS;
+    private DataInputStream clientDIS;
 
-    private TreeSet<String> cookies;
+    private String cookie = null;
 
     public void receiveFile(InetAddress serveurIP, int serveurPort, String nomFichier) {
 
@@ -43,8 +43,9 @@ public class User extends Application {
             try {
                 soc = new Socket(serveurIP, serveurPort);
 
-                // Initialisation de la liste des cookies
-                cookies = new TreeSet<>();
+                // Chargement des flux
+                clientDOS = new DataOutputStream(soc.getOutputStream());
+                clientDIS = new DataInputStream(soc.getInputStream());
             } catch (Exception e) {
                 showAlert("Erreur serveur", "Impossible de se connecter au serveur");
                 return;
@@ -52,7 +53,7 @@ public class User extends Application {
         }
 
         // Ouverture du fichier
-        FileOutputStream file = null;
+        FileOutputStream file;
         try {
             file = new FileOutputStream("src/projet_web/User/data/" + nomFichier);
         } catch (IOException e) {
@@ -61,13 +62,14 @@ public class User extends Application {
         }
 
         try {
-            // Chargement des flux
-            clientDOS = new DataOutputStream(soc.getOutputStream());
-            DataInputStream clientDIS = new DataInputStream(soc.getInputStream());
-
             // Ecriture de la requête GET
             clientDOS.writeUTF("GET " + nomFichier + " HTTP/1.1");
             clientDOS.flush();
+
+            if (cookie != null) {
+                clientDOS.writeUTF(cookie);
+                clientDOS.flush();
+            }
 
             // Attente réponse, on récupère le header
             String header = clientDIS.readUTF();
@@ -84,26 +86,37 @@ public class User extends Application {
                 System.out.print(contentType);
 
                 // On enregistre le cookie
-                String cookie = clientDIS.readUTF();
+                cookie = clientDIS.readUTF();
                 System.out.println(cookie);
-                cookies.add(cookie);
 
                 // On récupère le header des données
                 String messageBody = clientDIS.readUTF();
-                System.out.print(messageBody);
 
                 // Ligne vide
                 String emptyLine = clientDIS.readUTF();
-                System.out.print(emptyLine);
 
                 // Lecture des données
-                int b = clientDIS.read();
-                while (b != -1) {
-                    // Ecriture dans le fichier
-                    file.write(b);
-                    b = clientDIS.read();
+                soc.setSoTimeout(500);
+                try {
+                    int b = clientDIS.read();
+                    while (b != -1) {
+                        // Ecriture dans le fichier
+                        file.write(b);
+                        b = clientDIS.read();
+                    }
+                } catch (SocketTimeoutException e) {
+                    // Fin de lecture
                 }
+                soc.setSoTimeout(0);
                 System.out.println("Le fichier a bien été reçu");
+
+                // On affiche le cookie
+                Platform.runLater(
+                        () -> {
+                            cookieLabel.setText(cookie);
+                        }
+                );
+
                 showAlert("Succès", "Le fichier a bien été transféré");
             } else if (header.equals("HTTP/1.1 404 NOT FOUND\n")) {
                 showAlert("Erreur serveur", "404 NOT FOUND : Le fichier est introuvable");
@@ -115,7 +128,9 @@ public class User extends Application {
 
             // Fermeture du fichier et des flux
             file.close();
-            clientDIS.close();
+        } catch (SocketException se) {
+            soc = null;
+            this.receiveFile(serveurIP, serveurPort, nomFichier);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -136,13 +151,12 @@ public class User extends Application {
                         clientDOS.writeUTF("Connection= close\n");
                         clientDOS.flush();
                         clientDOS.close();
+                        clientDIS.close();
                         soc.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-                Platform.exit();
-                exit(0);
             }
         });
 
@@ -163,7 +177,7 @@ public class User extends Application {
                 () -> {
                     new Thread(() -> {
                         try {
-                            new User().receiveFile(InetAddress.getByName(serveurIP.getText()), 80, nomFichier.getText());
+                            this.receiveFile(InetAddress.getByName(serveurIP.getText()), 80, nomFichier.getText());
                         } catch (UnknownHostException e) {
                             showAlert("Erreur locale", "L'adresse IP entrée pour le serveur est incorrecte");
                         }

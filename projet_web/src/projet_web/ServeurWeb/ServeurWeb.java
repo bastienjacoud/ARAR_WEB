@@ -5,11 +5,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 
-import static java.lang.System.exit;
-
 public class ServeurWeb {
 
     private ServerSocket ss;
+
+    private static int i = 0;
 
     /*
      * Constructeur
@@ -57,7 +57,7 @@ public class ServeurWeb {
                 return req.split(" ")[1];
             else if (req.compareTo("Connection= close\n") == 0)//si c'est une demande de fermeture de connexion
             {
-                this.fermeConnexion(conn_cli, serveurDOS, serveurDIS);
+                this.fermeConnexion(conn_cli);
                 return "";
             } else//sinon (erreur)
             {
@@ -66,7 +66,7 @@ public class ServeurWeb {
             }
         } catch (SocketTimeoutException e)//si pas d'activite depuis 10s, on ferme la connexion
         {
-            this.fermeConnexion(conn_cli, serveurDOS, serveurDIS);
+            this.fermeConnexion(conn_cli);
             return "";
         }
 
@@ -75,7 +75,7 @@ public class ServeurWeb {
     /*
      * Envoi du contenu du fichier dont le nom est passe en parametre
      */
-    public void sendFile(String nomFichier, DataOutputStream serveurDOS) throws IOException {
+    public void sendFile(String nomFichier, Socket socket, DataOutputStream serveurDOS, DataInputStream serveurDIS) throws IOException {
         //Permet de ne pas envoyer de fichier lorsqu'il s'agit d'une fermeture de connexion ou d'une erreur
         if (nomFichier.compareTo("") != 0) {
             //Recuperation du fichier
@@ -84,11 +84,23 @@ public class ServeurWeb {
             try {
                 //Creation du FileInputStream pour lire le fichier
                 fis = new FileInputStream(f);
+
+                // On récupère le cookie s'il y en a un
+                String cookie;
+                try {
+                    socket.setSoTimeout(500);
+                    cookie = serveurDIS.readUTF();
+                } catch (SocketTimeoutException e) {
+                    cookie = "Set-Cookie: idClient=" + i + "\n";
+                    i++;
+                }
+                socket.setSoTimeout(10000);
+
                 //Ecriture de l'entete
                 serveurDOS.writeUTF("HTTP/1.1 200 OK\n");
                 serveurDOS.writeUTF("Content-Length: " + f.length() + "\n");
                 serveurDOS.writeUTF("Content-Type: " + nomFichier.split("\\.")[1] + "\n");
-                serveurDOS.writeUTF("Set-Cookie: code=" + nomFichier + "\n");
+                serveurDOS.writeUTF(cookie);
                 serveurDOS.writeUTF("Message_body: \n");
                 serveurDOS.writeUTF("\n");
                 //Lecture depuis le fichier et ecriture des donnees sur le flux
@@ -112,12 +124,10 @@ public class ServeurWeb {
     /*
      * Ferme la connexion etablie precedemment
      */
-    public void fermeConnexion(Socket con_cli, DataOutputStream serveurDOS, DataInputStream serveurDIS) {
+    public void fermeConnexion(Socket con_cli) {
         if (con_cli != null)//vérifie qu'un client est connecté
         {
             try {
-                serveurDOS.close();
-                serveurDIS.close();
                 con_cli.close();
                 System.out.println("Fermeture de la connexion.");
             } catch (IOException e) {
@@ -141,26 +151,24 @@ public class ServeurWeb {
      * Fonction effectuee par le serveur pour le lancer
      */
     public void action() {
-        while (true) {
+        while (!ss.isClosed()) {
             Socket conn = this.connexion();
-            {
+            if (conn != null) {
                 new Thread(() -> {
                     try {
                         Socket con_cli = conn;
+
                         // On récupère les flux
                         DataOutputStream serveurDOS = new DataOutputStream(con_cli.getOutputStream());
                         DataInputStream serveurDIS = new DataInputStream(con_cli.getInputStream());
-
-                        while(!con_cli.isClosed()) {
-                            this.sendFile(this.receiveRequest(con_cli, serveurDOS, serveurDIS), serveurDOS);
+                        while (!ss.isClosed() && !con_cli.isClosed()) {
+                            this.sendFile(this.receiveRequest(con_cli, serveurDOS, serveurDIS), con_cli, serveurDOS, serveurDIS);
                         }
-                        //System.out.println("test");
                     } catch (IOException e) {
 
                     }
                 }).start();
             }
-
         }
     }
 
