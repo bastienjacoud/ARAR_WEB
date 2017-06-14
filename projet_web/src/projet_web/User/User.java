@@ -2,8 +2,6 @@ package projet_web.User;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.concurrent.Service;
-import javafx.concurrent.Task;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -19,6 +17,7 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.TreeSet;
 
 import static java.lang.System.exit;
 
@@ -35,12 +34,21 @@ public class User extends Application {
     private Socket soc = null;
     private DataOutputStream clientDOS;
 
+    private TreeSet<String> cookies;
+
     public void receiveFile(InetAddress serveurIP, int serveurPort, String nomFichier) {
-        // Ouverture du port
-        try {
-            soc = new Socket(serveurIP, serveurPort);
-        } catch (Exception e) {
-            showAlert("Erreur serveur", "Impossible de se connecter au serveur");
+
+        if (soc == null) {
+            // Ouverture du port
+            try {
+                soc = new Socket(serveurIP, serveurPort);
+
+                // Initialisation de la liste des cookies
+                cookies = new TreeSet<>();
+            } catch (Exception e) {
+                showAlert("Erreur serveur", "Impossible de se connecter au serveur");
+                return;
+            }
         }
 
         // Ouverture du fichier
@@ -49,6 +57,7 @@ public class User extends Application {
             file = new FileOutputStream("src/projet_web/User/data/" + nomFichier);
         } catch (IOException e) {
             showAlert("Erreur locale", "Le répertoire 'src/projet_web/User/data' est introuvable");
+            return;
         }
 
         try {
@@ -74,6 +83,11 @@ public class User extends Application {
                 String contentType = clientDIS.readUTF();
                 System.out.print(contentType);
 
+                // On enregistre le cookie
+                String cookie = clientDIS.readUTF();
+                System.out.println(cookie);
+                cookies.add(cookie);
+
                 // On récupère le header des données
                 String messageBody = clientDIS.readUTF();
                 System.out.print(messageBody);
@@ -86,16 +100,15 @@ public class User extends Application {
                 int b = clientDIS.read();
                 while (b != -1) {
                     // Ecriture dans le fichier
-                    //System.out.print(b);
                     file.write(b);
                     b = clientDIS.read();
                 }
                 System.out.println("Le fichier a bien été reçu");
                 showAlert("Succès", "Le fichier a bien été transféré");
             } else if (header.equals("HTTP/1.1 404 NOT FOUND\n")) {
-                showAlert("Erreur serveur", "Le fichier est introuvable");
+                showAlert("Erreur serveur", "404 NOT FOUND : Le fichier est introuvable");
             } else if (header.equals("HTTP/1.1 502 BAD GATEWAY\n")) {
-                showAlert("Erreur serveur", "La requête envoyée est incorrecte");
+                showAlert("Erreur serveur", "502 BAD GATEWAY : La requête envoyée est incorrecte");
             } else {
                 showAlert("Erreur serveur", "La réponse du serveur est incorrecte");
             }
@@ -120,7 +133,7 @@ public class User extends Application {
             public void handle(WindowEvent t) {
                 if (soc != null) {
                     try {
-                        clientDOS.writeUTF("Connection = close\n");
+                        clientDOS.writeUTF("Connection= close\n");
                         clientDOS.flush();
                         clientDOS.close();
                         soc.close();
@@ -155,24 +168,6 @@ public class User extends Application {
                             showAlert("Erreur locale", "L'adresse IP entrée pour le serveur est incorrecte");
                         }
                     }).start();
-                    /*final Service<Void> lancerUser = new Service<Void>() {
-                        @Override
-                        protected Task<Void> createTask() {
-                            return new Task<Void>() {
-                                @Override
-                                protected Void call() throws Exception {
-                                    try {
-                                        new User().receiveFile(InetAddress.getByName(serveurIP.getText()), 80, nomFichier.getText());
-                                    } catch (IOException e) {
-                                        showAlert("Erreur locale", "L'adresse IP entrée pour le serveur est incorrecte");
-                                    }
-                                    return null;
-                                }
-                            };
-                        }
-                    };
-                    lancerUser.start();
-                    */
                 }
         );
     }
@@ -184,8 +179,6 @@ public class User extends Application {
         } catch (IOException e) {
             showAlert("Erreur locale", "Le répertoire 'src/projet_web/User/data' est introuvable");
         }
-        serveurIP.setText("192.168.43.144");
-        nomFichier.setText("fichier.txt");
     }
 
     private void showAlert(String titre, String message) {
